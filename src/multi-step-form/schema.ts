@@ -23,7 +23,9 @@ export const accountSchema = z
     message: "Passwords do not match",
   });
 
-// TODO: combine into one schema if you validate everything at once on submit
+/** Whole form: used by the resolver (error messages) and for the final submit. */
+export const formSchema = personalSchema.and(addressSchema).and(accountSchema);
+
 export type PersonalData = z.infer<typeof personalSchema>;
 export type AddressData = z.infer<typeof addressSchema>;
 export type AccountData = z.infer<typeof accountSchema>;
