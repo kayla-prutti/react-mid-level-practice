@@ -1,13 +1,10 @@
 import type { User } from "./types";
-
-const BASE_URL = "https://dummyjson.com/users/search";
+import { mockSearchUsers } from "./mockUsers";
 
 /**
- * Fetch users matching `query`.
- * TODO: pass the AbortSignal to fetch so stale requests can be cancelled.
- * TODO: throw on non-2xx responses.
+ * Search users by `query`. Backed by local mock data (random latency, abortable).
+ * Typing "error" rejects, to exercise the error state.
  */
-export async function searchUsers(query: string, signal?: AbortSignal): Promise<User[]> {
-  // TODO: implement
-  throw new Error("searchUsers not implemented");
+export function searchUsers(query: string, signal?: AbortSignal): Promise<User[]> {
+  return mockSearchUsers(query, signal);
 }

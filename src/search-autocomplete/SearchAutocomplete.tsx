@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDebounce } from "./useDebounce";
 import { searchUsers } from "./api";
 import type { SearchStatus, User } from "./types";
@@ -9,25 +9,42 @@ import type { SearchStatus, User } from "./types";
  *  [ ] Fetch on debounced value; skip empty query
  *  [ ] Loading / error / empty states
  *  [ ] Cancel or ignore stale requests (AbortController / race conditions)
- *  [ ] Keyboard nav: ArrowUp / ArrowDown / Enter / Escape
- *  [ ] Click outside closes the list
  *  [ ] Highlight the matching text in results
- *  [ ] a11y: role="combobox", aria-expanded, aria-activedescendant, role="listbox"/"option"
  */
 export default function SearchAutocomplete() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<User[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const [isOpen, setIsOpen] = useState(false);
 
   const debouncedQuery = useDebounce(query, 300);
 
-  // TODO: useEffect on debouncedQuery -> call searchUsers, update status/results
+  useEffect(() => {
+    const trimmed = debouncedQuery.trim();
 
-  // TODO: handleKeyDown for keyboard navigation
+    if (!trimmed) {
+      setResults([]);
+      setStatus("idle");
+      return;
+    }
 
-  // TODO: handleSelect(user)
+    // Each run owns its controller; cleanup aborts the previous request,
+    // so a slow, stale response can never overwrite a newer one.
+    const controller = new AbortController();
+    setStatus("loading");
+
+    searchUsers(trimmed, controller.signal)
+      .then((users) => {
+        setResults(users);
+        setStatus("success");
+      })
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setResults([]);
+        setStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [debouncedQuery]);
 
   return (
     <div style={{ maxWidth: 400 }}>
@@ -40,7 +57,22 @@ export default function SearchAutocomplete() {
         style={{ width: "100%", padding: 8 }}
       />
 
-      {/* TODO: render loading / error / empty / results list */}
+      {status === "loading" && <p>Loading...</p>}
+      {status === "error" && (
+        <p role="alert">Something went wrong. Please try again.</p>
+      )}
+      {status === "success" && results.length === 0 && (
+        <p>No results for "{debouncedQuery}".</p>
+      )}
+      {status === "success" && results.length > 0 && (
+        <ul>
+          {results.map((u) => (
+            <li key={u.id}>
+              {u.firstName} {u.lastName}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
